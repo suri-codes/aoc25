@@ -12,9 +12,11 @@ pub fn handle(day: Day, release: bool, dhat: bool, submit_part: Option<u8>) {
             "--features".to_string(),
             "dhat-heap".to_string(),
         ]);
-    } else if release {
-        cmd_args.push("--release".to_string());
     }
+    // else if release {
+    // always just push release
+    cmd_args.push("--release".to_string());
+    // }
 
     cmd_args.push("--".to_string());
 
