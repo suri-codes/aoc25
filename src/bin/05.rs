@@ -1,4 +1,8 @@
-use std::{collections::HashSet, ops::RangeInclusive};
+#![feature(range_into_bounds)]
+use std::{
+    collections::{BTreeSet, HashSet},
+    ops::{IntoBounds, RangeInclusive},
+};
 
 advent_of_code::solution!(5);
 
@@ -36,52 +40,10 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(fresh)
 }
 
-pub fn reduce(ranges: &[RangeInclusive<u64>]) -> Option<Vec<RangeInclusive<u64>>> {
-    println!("reducing!");
-    dbg!(ranges);
-    let mut reduced = HashSet::new();
-    let mut some_reduction = false;
-    'candidate: for candidate in ranges.iter() {
-        for range in ranges.iter() {
-            println!("");
-            dbg!(candidate);
-            dbg!(range);
-
-            let cs = *candidate.start();
-            let ce = *candidate.end();
-            let rs = *range.start();
-            let re = *range.end();
-
-            // if the candidate starts outside of the range, but end inside of the range
-            let start_b4 = cs < rs && ce <= re && ce > rs;
-            let end_after = cs >= rs && cs < re && ce > re;
-            let encapsulated = cs < rs && ce > re || rs < cs && re > ce;
-
-            if start_b4 || end_after || encapsulated {
-                dbg!(start_b4);
-                dbg!(end_after);
-                dbg!(encapsulated);
-                println!("mergd");
-                reduced.insert(RangeInclusive::new(rs.min(cs), re.max(ce)));
-                some_reduction = true;
-                continue 'candidate;
-            }
-        }
-
-        reduced.insert(candidate.clone());
-    }
-
-    if !some_reduction {
-        return None;
-    }
-
-    Some(reduced.into_iter().collect::<Vec<_>>())
-}
-
 pub fn part_two(input: &str) -> Option<u64> {
     let split = input.trim().split("\n\n").collect::<Vec<_>>();
 
-    let fresh_ranges = split[0]
+    let mut fresh_ranges = split[0]
         .trim()
         .lines()
         .map(|r_str| {
@@ -90,24 +52,37 @@ pub fn part_two(input: &str) -> Option<u64> {
                 .map(|s| s.parse::<u64>().expect("must be a valid number"))
                 .collect::<Vec<_>>();
 
-            RangeInclusive::new(r_vec[0], r_vec[1])
+            (r_vec[0], r_vec[1])
         })
         .collect::<Vec<_>>();
 
-    let mut curr = fresh_ranges;
+    fresh_ranges.sort();
+    fresh_ranges.reverse();
 
-    while let Some(reduced) = reduce(&curr) {
-        // dbg!(&curr);
-        curr = reduced;
+    let mut discrete_ranges = vec![];
+
+    loop {
+        let Some((curr_start, mut curr_end)) = fresh_ranges.pop() else {
+            break;
+        };
+
+        loop {
+            let Some((next_start, next_end)) = fresh_ranges.last() else {
+                break;
+            };
+
+            if *next_start <= curr_end {
+                curr_end = curr_end.max(*next_end);
+                fresh_ranges.pop();
+            } else {
+                break;
+            }
+        }
+
+        discrete_ranges.push((curr_start, curr_end));
     }
 
-    let mut total = 0;
-
-    for range in curr {
-        total += range.end() - range.start() + 1
-    }
-
-    Some(total)
+    Some(discrete_ranges.iter().map(|(s, e)| e - s + 1).sum())
 }
 
 #[cfg(test)]
